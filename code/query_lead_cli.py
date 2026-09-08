@@ -28,6 +28,11 @@ import library as lib
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_OUT = os.path.join(REPO_ROOT, "outputs", "lead_matches.csv")
 
+# A match at or above this similarity just reconstructs the lead itself (or
+# something indistinguishable from it under the shape descriptor) -- never
+# a useful "new" analogue, so these are always dropped, not configurable.
+MAX_USEFUL_SIMILARITY = 0.999
+
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
@@ -73,6 +78,7 @@ def main():
 
         ranked = [(shape.best_similarity(d, lib_d), lib_smi, lib_label)
                  for lib_smi, (lib_d, lib_label) in library_fragments.items()]
+        ranked = [r for r in ranked if r[0] < MAX_USEFUL_SIMILARITY]
         ranked.sort(reverse=True)
 
         print(f"\nLead fragment: {lead_frag_smi}")

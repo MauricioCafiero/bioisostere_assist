@@ -39,7 +39,9 @@ conformer generation, ODDT for the 3D shape descriptors.**
 6. **Build the analogue** (`query_lead_cli.py` only) — for each top match, the
    matched library fragment is grafted onto the lead's own core at the
    matching numbered dummy atom (`Chem.molzip`), producing a real new
-   candidate molecule's SMILES — not just a fragment-level score. The top
+   candidate molecule's SMILES — not just a fragment-level score. Matches at
+   similarity ≥ 0.999 are always dropped (not configurable) — those just
+   reconstruct the lead itself, not a useful new analogue. The remaining top
    matches (by similarity, across all of the lead's fragments) are also
    rendered as a grid image.
 
@@ -85,13 +87,13 @@ rosuvastatin's own core (real output from the run above):
 
 ```
 Lead fragment: CC(C)[*:1]                  (the isopropyl group on the pyrimidine ring)
-  1.000  CC(C)[*:1]  -> CC(C)c1nc(N(C)S(C)(=O)=O)nc(-c2ccc(F)cc2)c1/C=C/[C@H](O)C[C@H](O)CC(=O)O
-  0.975  CN(C)[*:1]  -> CN(C)c1nc(N(C)S(C)(=O)=O)nc(-c2ccc(F)cc2)c1/C=C/[C@H](O)C[C@H](O)CC(=O)O
-  0.951  C1CC1[*:1]  -> C1CC1c1nc(N(C)S(C)(=O)=O)nc(-c2ccc(F)cc2)c1/C=C/[C@H](O)C[C@H](O)CC(=O)O
+  0.975  CN(C)[*:1]        -> CN(C)c1nc(N(C)S(C)(=O)=O)nc(-c2ccc(F)cc2)c1/C=C/[C@H](O)C[C@H](O)CC(=O)O
+  0.962  N[C@H](CO)[*:1]   -> CN(c1nc(-c2ccc(F)cc2)c(/C=C/[C@H](O)C[C@H](O)CC(=O)O)c([C@H](N)CO)n1)S(C)(=O)=O
+  0.954  CC(C)(Cl)[*:1]    -> CN(c1nc(-c2ccc(F)cc2)c(/C=C/[C@H](O)C[C@H](O)CC(=O)O)c(C(C)(C)Cl)n1)S(C)(=O)=O
 
 Lead fragment: Fc1ccc([*:1])cc1            (the 4-fluorophenyl ring)
-  1.000  Fc1ccc([*:1])cc1  -> (rosuvastatin itself)
-  0.943  Fc1ccc([*:1])nc1  -> CC(C)c1nc(N(C)S(C)(=O)=O)nc(-c2ccc(F)nc2)c1/C=C/[C@H](O)C[C@H](O)CC(=O)O
+  0.943  Fc1ccc([*:1])nc1  -> CC(C)c1nc(N(C)S(C)(=O)=O)nc(-c2ccc(F)cn2)c1/C=C/[C@H](O)C[C@H](O)CC(=O)O
+  0.934  C[C@H](O)CC(=O)[*:1] -> CC(C)c1nc(N(C)S(C)(=O)=O)nc(C(=O)C[C@H](C)O)c1/C=C/[C@H](O)C[C@H](O)CC(=O)O
 ```
 
 Top-12 analogues across all of rosuvastatin's fragments, ranked by shape
