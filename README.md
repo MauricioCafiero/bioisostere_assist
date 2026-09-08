@@ -48,10 +48,12 @@ conformer generation, ODDT for the 3D shape descriptors.**
 ## Library storage and the "new lead" workflow
 
 **A pre-built library ships in this repo** at `library/library_100k_usr.{csv,pkl}`
-— built from `data/human_druglike_100k.smi` with `--method usr` and every
-other `build_library_cli.py` flag left at its default (see the flag table
-below). Point `query_lead_cli.py` at it directly; there's no need to rebuild
-unless you want a different compound pool, similarity method, or fragment/
+— built from `data/human_druglike_100k.smi` (100,000 compounds pulled from
+ZINC's drug/clinical-status subsets plus a biogenic natural-product sample —
+full sourcing in "Data" below) with `--method usr` and every other
+`build_library_cli.py` flag left at its default (see the flag table below).
+Point `query_lead_cli.py` at it directly; there's no need to rebuild unless
+you want a different compound pool, similarity method, or fragment/
 conformer parameters.
 
 `build_library_cli.py` is the expensive step to (re)run if you do want your
