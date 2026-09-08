@@ -9,11 +9,21 @@ descriptors, both open-source. Requires the dedicated `rdkit_env` venv, built
 from the vendored oddt-0.7.tar.gz (oddt is unmaintained; PyPI/GitHub could
 vanish, hence vendoring -- see openeye/vendor/ and sim_assist/README.md).
 """
+import sys
 import numpy as np
 # oddt (unmaintained, targets older NumPy) calls np.in1d, removed in NumPy 2.x.
 # Shim it back onto np.isin before oddt's atom-typing code ever touches it.
 if not hasattr(np, 'in1d'):
     np.in1d = np.isin
+
+# openbabel-wheel (installed for CafChemDock.py's `obabel` CLI) also installs
+# openbabel's Python bindings, whose API is incompatible with oddt's optional
+# openbabel-backed toolkit (oddt.toolkits.ob raises AttributeError at import
+# time, not the ImportError oddt's own try/except expects). We only ever use
+# oddt's RDKit toolkit, so block the import outright -- this is the standard
+# "make `import openbabel` raise ImportError" trick -- and let oddt's
+# existing fallback pick rdk instead.
+sys.modules.setdefault('openbabel', None)
 
 from rdkit import Chem
 from rdkit.Chem import AllChem

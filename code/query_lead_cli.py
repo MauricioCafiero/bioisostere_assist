@@ -9,9 +9,16 @@ actual new analogue molecule for each top match by grafting the matched
 library fragment onto the lead's core (Chem.molzip) -- plus a grid image of
 the top hits.
 
+Pass --receptor and --center to also dock the lead and every surviving
+analogue (AutoDock Vina, CafChemDock.py) and report each analogue's
+Δdocking-score relative to the lead. Vina affinities are negative; more
+negative is more favorable, so a negative Δ means the analogue is predicted
+to bind better than the lead.
+
 Usage:
     python code/query_lead_cli.py --library library/library_100k_usr.pkl \\
-        --lead "CC(=O)Nc1ccc(O)cc1" --top 15 --out outputs/lead_matches.csv
+        --lead "CC(=O)Nc1ccc(O)cc1" --top 15 --out outputs/lead_matches.csv \\
+        --receptor receptors/HMGCR_1HWL.pdb --center 17.357 7.520 14.925
 """
 import argparse
 import csv
@@ -21,6 +28,7 @@ import sys
 from rdkit import Chem
 from rdkit.Chem import Draw
 
+import CafChemDock as dock
 import CafChemShape as shape
 import fragment as frag
 import library as lib
@@ -52,7 +60,21 @@ def main():
                     help="Number of top-ranked analogues (across all lead fragments) to draw in the "
                          "grid image (default: 12).")
     ap.add_argument("--out", default=DEFAULT_OUT, help=f"Output CSV path (default: {DEFAULT_OUT}).")
+    ap.add_argument("--receptor", default=None,
+                    help="Receptor PDB file -- if given (with --center), also dock the lead and "
+                         "every surviving analogue with AutoDock Vina.")
+    ap.add_argument("--center", nargs=3, type=float, default=None, metavar=("X", "Y", "Z"),
+                    help="Docking box center in Angstroms (e.g. a co-crystallized ligand's centroid).")
+    ap.add_argument("--box-size", type=float, default=22.0, dest="box_size",
+                    help="Cubic docking box edge length in Angstroms (default: 22.0).")
+    ap.add_argument("--exhaustiveness", type=int, default=8, help="Vina search effort (default: 8).")
+    ap.add_argument("--num-modes", type=int, default=9, dest="num_modes",
+                    help="Vina output poses considered (default: 9).")
+    ap.add_argument("--dock-seed", type=int, default=0, dest="dock_seed", help="Vina random seed (default: 0).")
+    ap.add_argument("--cpu", type=int, default=0, help="CPUs for Vina (default: autodetect).")
     args = ap.parse_args()
+
+    do_dock = args.receptor is not None and args.center is not None
 
     print(f"Loading library from {args.library}...")
     method, lib_params, library_fragments = lib.load_library(args.library)
@@ -88,23 +110,55 @@ def main():
             print(f"  {sim:.3f}  {lib_smi:20s} (from {lib_label})  -> {analogue_smi}")
             rows.append([lead_frag_smi, lib_smi, lib_label, f"{sim:.4f}", analogue_smi])
 
+    dock_scores = {}
+    lead_dock_score = None
+    if do_dock:
+        print(f"\nDocking lead + {len({r[4] for r in rows if r[4]})} unique analogues "
+             f"into {args.receptor} at {tuple(args.center)}...")
+        to_dock = [args.lead] + [r[4] for r in rows if r[4]]
+        dock_scores = dock.dock_at_centroid(
+            args.receptor, to_dock, center=args.center, box_size=args.box_size,
+            exhaustiveness=args.exhaustiveness, num_modes=args.num_modes,
+            seed=args.dock_seed, cpu=args.cpu,
+        )
+        lead_dock_score = dock_scores.get(args.lead)
+        print(f"Lead docking score: {lead_dock_score}")
+
+    header = ["lead_fragment", "library_fragment", "library_source", "similarity", "analogue_smiles"]
+    if do_dock:
+        header += ["docking_score", "delta_docking_score"]
+
+    out_rows = []
+    for row in rows:
+        analogue_smi = row[4]
+        if do_dock:
+            aff = dock_scores.get(analogue_smi) if analogue_smi else None
+            delta = (aff - lead_dock_score) if (aff is not None and lead_dock_score is not None) else None
+            row = row + [aff, delta]
+        out_rows.append(row)
+
     with open(args.out, "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["lead_fragment", "library_fragment", "library_source", "similarity", "analogue_smiles"])
-        w.writerows(rows)
-    print(f"\nWrote {len(rows)} matches to {args.out}")
+        w.writerow(header)
+        w.writerows(out_rows)
+    print(f"\nWrote {len(out_rows)} matches to {args.out}")
 
-    image_rows = [r for r in rows if r[4]]
+    image_rows = [r for r in out_rows if r[4]]
     image_rows.sort(key=lambda r: float(r[3]), reverse=True)
     image_rows = image_rows[:args.image_top]
 
     mols, legends = [], []
-    for lead_frag_smi, lib_smi, lib_label, sim, analogue_smi in image_rows:
+    for row in image_rows:
+        lead_frag_smi, lib_smi, lib_label, sim, analogue_smi = row[:5]
         m = Chem.MolFromSmiles(analogue_smi)
         if m is None:
             continue
         mols.append(m)
-        legends.append(f"{sim} ({lead_frag_smi} -> {lib_smi})")
+        legend = f"sim={sim} ({lead_frag_smi} -> {lib_smi})"
+        if do_dock:
+            aff, delta = row[5], row[6]
+            legend += f"\ndock={aff} (Δ={delta:+.2f})" if delta is not None else "\ndock=failed"
+        legends.append(legend)
 
     if mols:
         img_path = os.path.splitext(args.out)[0] + ".png"
