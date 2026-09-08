@@ -3,8 +3,11 @@
 CLI for bioisostere_assist: the "new lead comes in" workflow. Loads a
 prebuilt library (from build_library_cli.py) -- instant, no recomputation --
 fragments the new lead molecule, embeds + shapes only the lead's own
-fragments (fast: one molecule, not the whole pool), and ranks every one of
-the lead's substituent fragments against the entire library.
+fragments (fast: one molecule, not the whole pool), ranks every one of the
+lead's substituent fragments against the entire library, and builds an
+actual new analogue molecule for each top match by grafting the matched
+library fragment onto the lead's core (Chem.molzip) -- plus a grid image of
+the top hits.
 
 Usage:
     python code/query_lead_cli.py --library outputs/library_100k_usr.pkl \\
@@ -14,6 +17,9 @@ import argparse
 import csv
 import os
 import sys
+
+from rdkit import Chem
+from rdkit.Chem import Draw
 
 import CafChemShape as shape
 import fragment as frag
@@ -37,6 +43,9 @@ def main():
     ap.add_argument("--prune-rms-thresh", type=float, default=None, dest="prune_rms_thresh",
                     help="Override the library's own RMSD-pruning threshold (default: match library).")
     ap.add_argument("--top", type=int, default=15, help="Top matches per lead fragment to report (default: 15).")
+    ap.add_argument("--image-top", type=int, default=12, dest="image_top",
+                    help="Number of top-ranked analogues (across all lead fragments) to draw in the "
+                         "grid image (default: 12).")
     ap.add_argument("--out", default=DEFAULT_OUT, help=f"Output CSV path (default: {DEFAULT_OUT}).")
     args = ap.parse_args()
 
@@ -49,14 +58,14 @@ def main():
     energy_window = args.energy_window if args.energy_window is not None else lib_params["energy_window"]
     prune_rms_thresh = args.prune_rms_thresh if args.prune_rms_thresh is not None else lib_params["prune_rms_thresh"]
 
-    lead_pool = frag.fragments_from_smiles(args.lead, "lead", max_frag_atoms)
+    lead_pool = frag.fragments_with_cores_from_smiles(args.lead, max_frag_atoms)
     print(f"\nLead fragmented into {len(lead_pool)} substituent-like fragments")
 
     out_dir = os.path.dirname(args.out) or "."
     os.makedirs(out_dir, exist_ok=True)
 
     rows = []
-    for lead_frag_smi, _ in lead_pool:
+    for lead_frag_smi, lead_core_smi in lead_pool:
         d = lib.shape_for_fragment(lead_frag_smi, method, n_confs, energy_window, prune_rms_thresh)
         if d is None:
             print(f"\n[FAILED to embed/shape] {lead_frag_smi}")
@@ -69,14 +78,34 @@ def main():
         print(f"\nLead fragment: {lead_frag_smi}")
         print(f"Top {min(args.top, len(ranked))} library matches:")
         for sim, lib_smi, lib_label in ranked[:args.top]:
-            print(f"  {sim:.3f}  {lib_smi:20s} (from {lib_label})")
-            rows.append([lead_frag_smi, lib_smi, lib_label, f"{sim:.4f}"])
+            analogue_smi = frag.build_analogue(lead_core_smi, lib_smi)
+            print(f"  {sim:.3f}  {lib_smi:20s} (from {lib_label})  -> {analogue_smi}")
+            rows.append([lead_frag_smi, lib_smi, lib_label, f"{sim:.4f}", analogue_smi])
 
     with open(args.out, "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["lead_fragment", "library_fragment", "library_source", "similarity"])
+        w.writerow(["lead_fragment", "library_fragment", "library_source", "similarity", "analogue_smiles"])
         w.writerows(rows)
     print(f"\nWrote {len(rows)} matches to {args.out}")
+
+    image_rows = [r for r in rows if r[4]]
+    image_rows.sort(key=lambda r: float(r[3]), reverse=True)
+    image_rows = image_rows[:args.image_top]
+
+    mols, legends = [], []
+    for lead_frag_smi, lib_smi, lib_label, sim, analogue_smi in image_rows:
+        m = Chem.MolFromSmiles(analogue_smi)
+        if m is None:
+            continue
+        mols.append(m)
+        legends.append(f"{sim} ({lead_frag_smi} -> {lib_smi})")
+
+    if mols:
+        img_path = os.path.splitext(args.out)[0] + ".png"
+        img = Draw.MolsToGridImage(mols, molsPerRow=4, subImgSize=(300, 300),
+                                   legends=legends, returnPNG=False)
+        img.save(img_path)
+        print(f"Wrote top-{len(mols)} analogue grid image to {img_path}")
 
 
 if __name__ == "__main__":

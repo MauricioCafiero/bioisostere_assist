@@ -61,6 +61,61 @@ def fragments_from_smiles(smiles, source_label, max_frag_heavy_atoms=MAX_FRAG_HE
     return out
 
 
+def fragments_with_cores_from_smiles(smiles, max_frag_heavy_atoms=MAX_FRAG_HEAVY_ATOMS):
+    """Single-bond-cut fragmentation (rdMMPA, maxCuts=1), returning
+    (substituent_smiles, core_smiles) pairs -- the core is the complementary
+    piece from the SAME cut, carrying a matching numbered dummy atom
+    (`[*:1]`), so a replacement substituent can be grafted onto the core via
+    Chem.molzip(core_mol, replacement_mol) to build a new analogue molecule.
+
+    Used for a query lead (where the reconstructed core is needed); the
+    pooled library itself only needs bare substituents (fragments_from_smiles).
+    """
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return []
+    cuts = rdMMPA.FragmentMol(mol, maxCuts=1, resultsAsMols=False)
+
+    seen = set()
+    out = []
+    for core, chains in cuts:
+        if core:
+            continue  # maxCuts=1 always yields an empty core; guard anyway
+        pieces = [p.strip() for p in chains.split(".") if p.strip()]
+        if len(pieces) != 2:
+            continue
+        for i in (0, 1):
+            sub_smi, core_smi = pieces[i], pieces[1 - i]
+            if sub_smi in seen:
+                continue
+            pmol = Chem.MolFromSmiles(sub_smi)
+            if pmol is None:
+                continue
+            n_dummies = sum(1 for a in pmol.GetAtoms() if a.GetAtomicNum() == 0)
+            n_heavy = pmol.GetNumAtoms()
+            if n_dummies == 1 and n_heavy <= max_frag_heavy_atoms:
+                seen.add(sub_smi)
+                out.append((sub_smi, core_smi))
+    return out
+
+
+def build_analogue(core_smiles, replacement_frag_smiles):
+    """Grafts replacement_frag_smiles onto core_smiles at their matching
+    numbered dummy atoms (Chem.molzip). Returns the analogue's canonical
+    SMILES, or None on failure.
+    """
+    core_mol = Chem.MolFromSmiles(core_smiles)
+    frag_mol = Chem.MolFromSmiles(replacement_frag_smiles)
+    if core_mol is None or frag_mol is None:
+        return None
+    try:
+        analogue = Chem.molzip(core_mol, frag_mol)
+        Chem.SanitizeMol(analogue)
+    except Exception:
+        return None
+    return Chem.MolToSmiles(analogue)
+
+
 def build_fragment_pool(seed_smiles_with_labels, max_frag_heavy_atoms=MAX_FRAG_HEAVY_ATOMS):
     """seed_smiles_with_labels: iterable of (smiles, label) pairs.
     Returns a deduped list of (fragment_smiles, source_label) -- first
