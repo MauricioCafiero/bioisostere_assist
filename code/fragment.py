@@ -14,6 +14,17 @@ from rdkit.Chem import rdMMPA
 MAX_FRAG_HEAVY_ATOMS = 8  # keep "substituent-like" pieces, not the big remainder
 
 
+def has_radical(mol):
+    """True if any atom carries an unpaired electron. ZINC contains a small
+    number of genuine radical species (8 of the 100k druglike seeds, e.g.
+    [CH2]C(C)(C)c1ccccc1), and their fragments rank WELL on shape similarity
+    -- a radical is geometrically identical to its closed-shell twin, and USR
+    descriptors only see geometry -- so they have to be rejected explicitly
+    rather than filtered out by the similarity ranking.
+    """
+    return any(a.GetNumRadicalElectrons() for a in mol.GetAtoms())
+
+
 def cap_dummy_with_methyl(mol):
     """Replace every dummy atom (atomic num 0) with carbon. Returns a new,
     sanitized RDKit Mol, or None on failure.
@@ -52,7 +63,7 @@ def fragments_from_smiles(smiles, source_label, max_frag_heavy_atoms=MAX_FRAG_HE
                 continue
             seen.add(piece)
             pmol = Chem.MolFromSmiles(piece)
-            if pmol is None:
+            if pmol is None or has_radical(pmol):
                 continue
             n_dummies = sum(1 for a in pmol.GetAtoms() if a.GetAtomicNum() == 0)
             n_heavy = pmol.GetNumAtoms()
@@ -89,7 +100,7 @@ def fragments_with_cores_from_smiles(smiles, max_frag_heavy_atoms=MAX_FRAG_HEAVY
             if sub_smi in seen:
                 continue
             pmol = Chem.MolFromSmiles(sub_smi)
-            if pmol is None:
+            if pmol is None or has_radical(pmol):
                 continue
             n_dummies = sum(1 for a in pmol.GetAtoms() if a.GetAtomicNum() == 0)
             n_heavy = pmol.GetNumAtoms()

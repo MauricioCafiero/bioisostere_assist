@@ -85,6 +85,18 @@ def main():
     method, lib_params, library_fragments = lib.load_library(args.library)
     print(f"Library: {len(library_fragments)} fragments, method={method}, built with {lib_params}")
 
+    # Libraries built before radical filtering existed can still contain
+    # fragments like [CH2][*:1]; drop them here so an old .pkl stays usable.
+    # Filtering at load (not at ranking) means a rejected fragment's slot goes
+    # to the next real match instead of leaving a blank analogue in the output.
+    radical_frags = [s for s in library_fragments
+                     if (m := Chem.MolFromSmiles(s)) is not None and frag.has_radical(m)]
+    for s in radical_frags:
+        del library_fragments[s]
+    if radical_frags:
+        print(f"Dropped {len(radical_frags)} radical-bearing fragment(s) from the library: "
+              f"{', '.join(radical_frags)}")
+
     max_frag_atoms = args.max_frag_atoms if args.max_frag_atoms is not None else lib_params["max_frag_atoms"]
     n_confs = args.n_confs if args.n_confs is not None else lib_params["n_confs"]
     energy_window = args.energy_window if args.energy_window is not None else lib_params["energy_window"]
