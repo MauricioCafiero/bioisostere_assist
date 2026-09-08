@@ -103,10 +103,6 @@ compounds in natural-product diversity). All SMILES-valid.
 - `human_druglike_100k.scaffolds.tsv` / `.scaffold_freq.tsv` — Bemis-Murcko
   scaffold decomposition of the same pool.
 
-The raw merged ZINC export these were sampled from (~41MB, tag-per-compound
-across all special subsets) isn't duplicated into this repo; it lives at
-`../openeye/zinc_data/zinc_special_merged.tsv` for reproducibility.
-
 ## Installation
 
 `oddt` is unmaintained (last released 2019) and needs an older-NumPy-era
@@ -129,15 +125,13 @@ version and fail to compile.
 
 **`oddt` is vendored, not pulled from PyPI** (`vendor/oddt-0.7.tar.gz`, a
 verified byte-identical copy of the official PyPI sdist) so installation
-keeps working even if the PyPI release or upstream GitHub repo disappears —
-same reasoning and same file as in the sibling `sim_assist` project. A fork
-of `oddt/oddt` is also maintained at
+keeps working even if the PyPI release or upstream GitHub repo disappears.
+A fork of `oddt/oddt` is also maintained at
 [github.com/MauricioCafiero/oddt](https://github.com/MauricioCafiero/oddt)
 as a second, patchable copy.
 
-`similarity_functions.py`'s numpy compatibility shim is carried over into
-`CafChemShape.py`: oddt calls `np.in1d`, removed in NumPy 2.x, so it's
-shimmed back onto `np.isin` before oddt's atom-typing code runs.
+`CafChemShape.py` also shims `np.in1d` onto `np.isin` before importing
+oddt: oddt calls `np.in1d`, which NumPy 2.x removed.
 
 ## Usage
 
@@ -175,11 +169,3 @@ python3 query_lead_cli.py --library ../outputs/library_100k_usr.pkl \
 | `--max-frag-atoms`, `--n-confs`, `--energy-window`, `--prune-rms-thresh` | match library | Override the library's own build parameters if needed |
 | `--top` | 15 | Top matches per lead fragment to report |
 | `--out` | `outputs/lead_matches.csv` | Output CSV path |
-
-## Credits
-
-Adapted from [`sim_assist`](../sim_assist) (same CafChem project family) —
-`CafChemShape.py`'s embedding/shape-descriptor code started from
-`sim_assist/code/similarity_functions.py`, trimmed of the Ollama-agent
-report formatting and extended to keep a full conformer ensemble per
-fragment instead of a single best one.
