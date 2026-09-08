@@ -10,7 +10,7 @@ library fragment onto the lead's core (Chem.molzip) -- plus a grid image of
 the top hits.
 
 Usage:
-    python code/query_lead_cli.py --library outputs/library_100k_usr.pkl \\
+    python code/query_lead_cli.py --library library/library_100k_usr.pkl \\
         --lead "CC(=O)Nc1ccc(O)cc1" --top 15 --out outputs/lead_matches.csv
 """
 import argparse

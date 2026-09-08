@@ -47,11 +47,17 @@ conformer generation, ODDT for the 3D shape descriptors.**
 
 ## Library storage and the "new lead" workflow
 
-`build_library_cli.py` is the expensive step (run once, or whenever you want
-to rebuild): fragmenting the whole 100K-compound pool and embedding+shaping
-every resulting fragment took **4 minutes 16 seconds** end to end (4,994
-unique fragments, 4,981 successfully shaped). It saves **two** files from
-`--out outputs/library_100k_usr`:
+**A pre-built library ships in this repo** at `library/library_100k_usr.{csv,pkl}`
+— built from `data/human_druglike_100k.smi` with `--method usr` and every
+other `build_library_cli.py` flag left at its default (see the flag table
+below). Point `query_lead_cli.py` at it directly; there's no need to rebuild
+unless you want a different compound pool, similarity method, or fragment/
+conformer parameters.
+
+`build_library_cli.py` is the expensive step to (re)run if you do want your
+own: fragmenting the whole 100K-compound pool and embedding+shaping every
+resulting fragment took **4 minutes 16 seconds** end to end (4,994 unique
+fragments, 4,981 successfully shaped). It saves **two** files from `--out`:
 
 - `library_100k_usr.csv` — a human-readable manifest (fragment SMILES,
   source compound, conformer count).
@@ -72,11 +78,11 @@ of separating "build" from "query" is that the second step never re-touches
 the first step's work.
 
 ```bash
-# once (or whenever the pool changes):
+# only if you want your own library instead of the shipped one:
 python3 build_library_cli.py --method usr --out ../outputs/library_100k_usr
 
-# per new lead, as many times as you like:
-python3 query_lead_cli.py --library ../outputs/library_100k_usr.pkl \
+# per new lead, as many times as you like -- against the shipped library:
+python3 query_lead_cli.py --library ../library/library_100k_usr.pkl \
     --lead "CC(C)c1nc(N(C)S(C)(=O)=O)nc(-c2ccc(F)cc2)c1/C=C/[C@H](O)C[C@H](O)CC(=O)O" \
     --top 8
 ```
@@ -146,7 +152,10 @@ oddt: oddt calls `np.in1d`, which NumPy 2.x removed.
 
 ## Usage
 
-### `build_library_cli.py` — build (or rebuild) the library
+### `build_library_cli.py` — build your own library (optional)
+
+The shipped `library/library_100k_usr.pkl` already covers the default
+settings below; only run this if you want something different.
 
 ```bash
 cd code
@@ -168,14 +177,14 @@ python3 build_library_cli.py --csv ../data/human_druglike_100k.smi \
 ### `query_lead_cli.py` — rank a new lead's fragments against a built library
 
 ```bash
-python3 query_lead_cli.py --library ../outputs/library_100k_usr.pkl \
+python3 query_lead_cli.py --library ../library/library_100k_usr.pkl \
     --lead "CC(C)c1nc(N(C)S(C)(=O)=O)nc(-c2ccc(F)cc2)c1/C=C/[C@H](O)C[C@H](O)CC(=O)O" \
     --top 10 --out ../outputs/lead_matches.csv
 ```
 
 | Flag | Default | Description |
 |---|---|---|
-| `--library` | — (required) | Path to a `.pkl` from `build_library_cli.py` |
+| `--library` | — (required) | Path to a `.pkl` from `build_library_cli.py` — use the shipped `library/library_100k_usr.pkl`, or your own |
 | `--lead` | — (required) | SMILES of the new lead molecule |
 | `--max-frag-atoms`, `--n-confs`, `--energy-window`, `--prune-rms-thresh` | match library | Override the library's own build parameters if needed |
 | `--top` | 15 | Top matches per lead fragment to report |
