@@ -10,16 +10,6 @@ stack instead: **RDKit for fragmentation and conformer generation, ODDT for
 the 3D shape descriptors.** No OpenEye toolkit anywhere, and nothing here
 depends on a license that can expire.
 
-## Why not BROOD
-
-OpenEye's BROOD does the same kind of search, but its fragment database and
-query engine both require a valid license at runtime — a database built
-today stops being queryable the moment the license lapses. This project
-uses only open-source tools instead (RDKit + ODDT), so it keeps working
-indefinitely, and it's fast: building the full 100K-compound library takes
-about 4 minutes, and querying a new lead against it takes 1-2 seconds (see
-"Library storage" below).
-
 ## How it works
 
 1. **Fragment** (`code/fragment.py`) — cuts each input molecule at single
