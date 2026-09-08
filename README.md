@@ -5,10 +5,8 @@ A CafChem project.
 Finds shape-bioisosteric substituent fragments — pieces of a molecule that
 could be swapped for something else while preserving 3D shape (and
 optionally pharmacophore/electrostatic character) at the attachment point.
-This is the same job OpenEye's BROOD does, done with a fully open-source
-stack instead: **RDKit for fragmentation and conformer generation, ODDT for
-the 3D shape descriptors.** No OpenEye toolkit anywhere, and nothing here
-depends on a license that can expire.
+Built entirely on open-source tools: **RDKit for fragmentation and
+conformer generation, ODDT for the 3D shape descriptors.**
 
 ## How it works
 
@@ -18,8 +16,7 @@ depends on a license that can expire.
    substituent-like pieces (≤ 8 heavy atoms by default, configurable).
 2. **Cap** — each fragment's open valence (a dummy `*` atom) is permanently
    capped with a methyl carbon, turning it into a complete, embeddable
-   molecule. Unlike the BROOD path, there's no format requiring the dummy
-   atom's identity to survive, so nothing needs to be undone later.
+   molecule.
 3. **Embed** (`code/CafChemShape.py`) — up to 10 conformers per fragment
    (RDKit ETKDGv3), MMFF94-optimized, near-duplicates pruned by RMSD during
    embedding, and any conformer more than 10 kcal/mol above the lowest-energy
@@ -35,8 +32,7 @@ depends on a license that can expire.
      information.
 5. **Compare** — similarity between two fragments is the **max over every
    (conformer of A, conformer of B) pair**, i.e. "do these two fragments
-   have *any* pair of conformations that overlay well" — the same question
-   BROOD's overlay search asks, answered without BROOD.
+   have *any* pair of conformations that overlay well."
 
 ## Library storage and the "new lead" workflow
 
@@ -105,10 +101,7 @@ compounds in natural-product diversity). All SMILES-valid.
 - `human_druglike_100k.smi` — SMILES + ZINC ID, one per line.
 - `human_druglike_100k.info.tsv` — same compounds with their full ZINC tag list.
 - `human_druglike_100k.scaffolds.tsv` / `.scaffold_freq.tsv` — Bemis-Murcko
-  scaffold decomposition (computed via OpenEye's `OEGetBemisMurcko` while
-  the license was still available; kept here as a completed artifact even
-  though this repo's own code no longer depends on OpenEye — could be
-  regenerated with RDKit's `Chem.Scaffolds.MurckoScaffold` if ever needed).
+  scaffold decomposition of the same pool.
 
 The raw merged ZINC export these were sampled from (~41MB, tag-per-compound
 across all special subsets) isn't duplicated into this repo; it lives at
