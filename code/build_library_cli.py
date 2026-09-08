@@ -80,6 +80,11 @@ def main():
                          f"loaded by query_lead_cli.py).")
     args = ap.parse_args()
 
+    # Python block-buffers stdout when it isn't a tty, so on a long library
+    # build every progress line sits unflushed until the process exits --
+    # redirected to a log file, that looks identical to a hung run.
+    sys.stdout.reconfigure(line_buffering=True)
+
     out_dir = os.path.dirname(args.out) or "."
     os.makedirs(out_dir, exist_ok=True)
 

@@ -74,6 +74,11 @@ def main():
     ap.add_argument("--cpu", type=int, default=0, help="CPUs for Vina (default: autodetect).")
     args = ap.parse_args()
 
+    # Python block-buffers stdout when it isn't a tty, so on a long docking run
+    # every progress line sits unflushed until the process exits -- redirected
+    # to a log file, that looks identical to a hung run.
+    sys.stdout.reconfigure(line_buffering=True)
+
     do_dock = args.receptor is not None and args.center is not None
 
     print(f"Loading library from {args.library}...")
