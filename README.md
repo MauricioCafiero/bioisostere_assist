@@ -8,6 +8,16 @@ optionally pharmacophore/electrostatic character) at the attachment point.
 Built entirely on open-source tools: **RDKit for fragmentation and
 conformer generation, ODDT for the 3D shape descriptors.**
 
+## Contents
+
+- [How it works](#how-it-works)
+- [Library storage and the "new lead" workflow](#library-storage-and-the-new-lead-workflow)
+- [Data](#data)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Building your own library (optional)](#building-your-own-library-optional)
+  - [Querying a new lead against the library](#querying-a-new-lead-against-the-library)
+
 ## How it works
 
 1. **Fragment** (`code/fragment.py`) — cuts each input molecule at single
@@ -154,10 +164,11 @@ oddt: oddt calls `np.in1d`, which NumPy 2.x removed.
 
 ## Usage
 
-### `build_library_cli.py` — build your own library (optional)
+### Building your own library (optional)
 
 The shipped `library/library_100k_usr.pkl` already covers the default
-settings below; only run this if you want something different.
+settings below; only run `build_library_cli.py` if you want something
+different.
 
 ```bash
 cd code
@@ -176,7 +187,10 @@ python3 build_library_cli.py --csv ../data/human_druglike_100k.smi \
 | `--prune-rms-thresh` | 0.5 | Å; conformers this close to one already kept are treated as duplicates |
 | `--out` | `outputs/library` | Output path stem — writes `<out>.csv` and `<out>.pkl` |
 
-### `query_lead_cli.py` — rank a new lead's fragments against a built library
+### Querying a new lead against the library
+
+Run `query_lead_cli.py` to rank a new lead molecule's fragments against a
+built library:
 
 ```bash
 python3 query_lead_cli.py --library ../library/library_100k_usr.pkl \
