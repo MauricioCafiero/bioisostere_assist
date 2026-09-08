@@ -2,3 +2,4 @@ bio-env/
 __pycache__/
 *.pyc
 outputs/
+DEV_NOTES.md

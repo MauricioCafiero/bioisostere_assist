@@ -12,27 +12,13 @@ depends on a license that can expire.
 
 ## Why not BROOD
 
-BROOD's fragment database and its query/overlay search both live inside
-OpenEye's licensed `oebioisostere` module — the license is checked at
-runtime for *both* building and querying, so a BROOD database built today
-becomes unreadable the day the license lapses. This project exists to have
-a bioisostere-search tool that keeps working indefinitely.
-
-It also turned out faster in practice: BROOD's own conformer generation
-(`OEGenerateConformers`, wrapping Omega) took ~85ms/fragment when
-benchmarked here (10 conformers/fragment); this pipeline's RDKit+ODDT
-approach, also keeping up to 10 conformers/fragment, runs at
-~18-21ms/fragment — a clear win, though less dramatic than the ~6.5ms/fragment
-an earlier single-best-conformer version of this pipeline achieved, because
-keeping a full conformer ensemble costs real time regardless of toolkit.
-The remaining advantage over BROOD comes from
-skipping its proprietary database-write step (which requires preserving an
-exact dummy-atom identity across a conformer merge) — the methyl-capped
-fragment here just *is* the shape representation, permanently, with nothing
-to reconcile afterward. On the full 100K-compound pool: **4 minutes 16
-seconds** to build the library once, and **~1-2 seconds** to query any new
-lead against it afterward (see "Library storage" below) — BROOD's own
-Chomp step was extrapolated at ~5 days for the same pool.
+OpenEye's BROOD does the same kind of search, but its fragment database and
+query engine both require a valid license at runtime — a database built
+today stops being queryable the moment the license lapses. This project
+uses only open-source tools instead (RDKit + ODDT), so it keeps working
+indefinitely, and it's fast: building the full 100K-compound library takes
+about 4 minutes, and querying a new lead against it takes 1-2 seconds (see
+"Library storage" below).
 
 ## How it works
 
@@ -195,7 +181,8 @@ python3 build_library_cli.py --csv ../data/human_druglike_100k.smi \
 
 ```bash
 python3 query_lead_cli.py --library ../outputs/library_100k_usr.pkl \
-    --lead "CC(C)Cc1ccc(cc1)C(C)C(=O)O" --top 10 --out ../outputs/lead_matches.csv
+    --lead "CC(C)c1nc(N(C)S(C)(=O)=O)nc(-c2ccc(F)cc2)c1/C=C/[C@H](O)C[C@H](O)CC(=O)O" \
+    --top 10 --out ../outputs/lead_matches.csv
 ```
 
 | Flag | Default | Description |
